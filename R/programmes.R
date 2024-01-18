@@ -68,20 +68,16 @@ process_programme_json <- function(spot_json){
     tidyjson::enter_object('audience_views') %>%
     tidyjson::gather_array() %>%
     tidyjson::spread_values(audience_code = tidyjson::jstring('audience_code')) %>%
+    tidyjson::spread_values(audience_description = tidyjson::jstring('description')) %>%
     tidyjson::spread_values(audience_size_hundreds = tidyjson::jdouble('audience_size_hundreds')) %>%
-    tibble::as_tibble()
-
-  #Extract audience names
-  audiences <- spot_json$json$audience_categories %>%
-    tidyjson::as_tbl_json() %>%
-    tidyjson::spread_all() %>%
-    tibble::as_tibble()
+    tidyjson::spread_values(universe_size_hundreds = tidyjson::jdouble('target_size_in_hundreds')) %>%
+    tibble::as_tibble() |>
+    dplyr::mutate(tvrs = audience_size_hundreds / universe_size_hundreds * 100)
 
   #Pivot audiences to columns and append zero rated spots again
   spots_audiences <- audiences_parsed %>%
-    dplyr::left_join(audiences, by = c("audience_code")) %>%
     dplyr::mutate(kpi_var = audience_size_hundreds) %>%
-    dplyr::select(document.id.x,
+    dplyr::select(document.id,
                   panel_region,
                   is_macro_region,
                   station_name,
@@ -89,11 +85,9 @@ process_programme_json <- function(spot_json){
                   programme_type,
                   standard_datetime,
                   programme_duration,
-                  audience_name,
+                  audience_description,
                   kpi_var) %>%
-    tidyr::pivot_wider(names_from = audience_name, values_from = kpi_var) %>%
-    dplyr::rename(document.id = document.id.x) %>%
-    janitor::clean_names()
+    tidyr::pivot_wider(names_from = audience_description, values_from = kpi_var)
 
   spots_audiences[is.na(spots_audiences) & is.numeric(spots_audiences)] <- 0
   spots_audiences[is.na(spots_audiences) & is.character(spots_audiences)] <- ""

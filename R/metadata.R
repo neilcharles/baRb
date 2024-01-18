@@ -11,5 +11,9 @@ barb_get_advertisers <- function(){
     barb_url_advertisers()
   )
 
-  as.character(raw_json$json)
+  raw_json$json |>
+    tidyjson::spread_values(advertiser_name = tidyjson::jstring('advertiser_name')) |>
+    dplyr::group_by(advertiser_name) |>
+    dplyr::summarise()
+
 }

@@ -7,19 +7,21 @@
 #' @param consolidated whether to return consolidated or only live viewing. Defaults to TRUE (consolidated).
 #' @param use_reporting_days whether to use a standard 24 hour clock or the BARB reporting clock. Defaults to FALSE (standard 24 hour clock).
 #' @param standardise_audiences whether to standardise impacts by spot time length. Options are the default of no standardisation (""), "using_duration" or "using_rate_factors".
+#' @param metric Either "audience_size_hundreds" to return impacts, or "tvrs" to return TVR's
 #'
 #' @return A tibble of TV spots
 #' @export
 #'
 #' @examples
-#' barb_get_spots(min_transmission_date = "2023-01-01", max_transmission_date = "2023-01-31", advertiser_name = "hays_travel")
+#' barb_get_spots(min_transmission_date = "2023-01-01", max_transmission_date = "2023-01-31", advertiser_name = "hays_travel", metric = "audience_size_hundreds")
 barb_get_spots <- function(min_transmission_date = NULL,
                            max_transmission_date = NULL,
                            advertiser_name = NULL,
                            macro_regions = FALSE,
                            consolidated = TRUE,
                            use_reporting_days = FALSE,
-                           standardise_audiences = ""){
+                           standardise_audiences = "",
+                           metric = "audience_size_hundreds"){
 
   api_result <- barb_query_api(
     barb_url_spots(),
@@ -36,29 +38,33 @@ barb_get_spots <- function(min_transmission_date = NULL,
 
   if(length(api_result$json$events)==0) return(NULL)
 
-  spots <- process_spot_json(api_result)
+  spots <- process_spot_json(api_result, metric = metric)
 
   #Paginate if necessary
   while(!is.null(api_result$next_url)){
     message("Paginating")
+
     api_result <- barb_query_api(api_result$next_url)
 
-    api_page <- process_spot_json(api_result)
+    # if(!is.null(api_result$json$events)){  #Needed in case a page contains no data. Queried with BARB why this happens.
 
-    # API pages sometimes return fewer audiences than initial calls. Add a col of NA's when this happens.
-    if(ncol(api_page) < ncol(spots)){
-      api_page[, names(spots)[!names(spots) %in% names(api_page)]] <- NA
-    }
+      api_page <- process_spot_json(api_result, metric = metric)
 
-    spots <- spots %>%
-      dplyr::union_all(api_page)
+      # API pages sometimes return fewer audiences than initial calls. Add a col of NA's when this happens.
+      if(ncol(api_page) < ncol(spots)){
+        api_page[, names(spots)[!names(spots) %in% names(api_page)]] <- NA
+      }
+
+      spots <- spots %>%
+        dplyr::union_all(api_page)
+    # }
   }
 
   spots %>%
     dplyr::filter(is_macro_region==macro_regions)
 }
 
-process_spot_json <- function(spot_json){
+process_spot_json <- function(spot_json, metric = "audience_size_hundreds"){
 
   #Extract spot list from json
   spots_parsed <- spot_json$json$events %>%
@@ -84,7 +90,9 @@ process_spot_json <- function(spot_json){
     tidyjson::spread_values(audience_code = tidyjson::jstring('audience_code')) %>%
     tidyjson::spread_values(audience_description = tidyjson::jstring('description')) %>%
     tidyjson::spread_values(audience_size_hundreds = tidyjson::jdouble('audience_size_hundreds')) %>%
-    tibble::as_tibble()
+    tidyjson::spread_values(universe_size_hundreds = tidyjson::jdouble('target_size_in_hundreds')) %>%
+    tibble::as_tibble() |>
+    dplyr::mutate(tvrs = audience_size_hundreds / universe_size_hundreds * 100)
 
   #If all spots were zero rated, return result
   if(nrow(audiences_parsed)==0){
@@ -100,7 +108,7 @@ process_spot_json <- function(spot_json){
 
   #Pivot audiences to columns and append zero rated spots again
   spots_audiences <- audiences_parsed %>%
-    dplyr::mutate(kpi_var = audience_size_hundreds) %>%
+    dplyr::mutate(kpi_var = !!rlang::sym(metric)) %>%
     dplyr::select(document.id,
                   panel_region,
                   is_macro_region,

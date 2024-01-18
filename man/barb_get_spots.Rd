@@ -11,7 +11,8 @@ barb_get_spots(
   macro_regions = FALSE,
   consolidated = TRUE,
   use_reporting_days = FALSE,
-  standardise_audiences = ""
+  standardise_audiences = "",
+  metric = "audience_size_hundreds"
 )
 }
 \arguments{
@@ -28,6 +29,8 @@ barb_get_spots(
 \item{use_reporting_days}{whether to use a standard 24 hour clock or the BARB reporting clock. Defaults to FALSE (standard 24 hour clock).}
 
 \item{standardise_audiences}{whether to standardise impacts by spot time length. Options are the default of no standardisation (""), "using_duration" or "using_rate_factors".}
+
+\item{metric}{Either "audience_size_hundreds" to return impacts, or "tvrs" to return TVR's}
 }
 \value{
 A tibble of TV spots
@@ -36,5 +39,5 @@ A tibble of TV spots
 Get a tibble of spots from the BARB API
 }
 \examples{
-barb_get_spots(min_transmission_date = "2023-01-01", max_transmission_date = "2023-01-31", advertiser_name = "hays_travel")
+barb_get_spots(min_transmission_date = "2023-01-01", max_transmission_date = "2023-01-31", advertiser_name = "hays_travel", metric = "audience_size_hundreds")
 }
