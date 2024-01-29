@@ -3,7 +3,6 @@
 #' @param min_transmission_date Start date of the spot query
 #' @param max_transmission_date End date of the spot query
 #' @param advertiser_name Advertiser name. Get names from barb_get_advertisers()
-#' @param macro_regions whether to return macro or standard region areas
 #' @param consolidated whether to return consolidated or only live viewing. Defaults to TRUE (consolidated).
 #' @param use_reporting_days whether to use a standard 24 hour clock or the BARB reporting clock. Defaults to FALSE (standard 24 hour clock).
 #' @param standardise_audiences whether to standardise impacts by spot time length. Options are the default of no standardisation (""), "using_duration" or "using_rate_factors".
@@ -17,7 +16,6 @@
 barb_get_spots <- function(min_transmission_date = NULL,
                            max_transmission_date = NULL,
                            advertiser_name = NULL,
-                           macro_regions = FALSE,
                            consolidated = TRUE,
                            use_reporting_days = FALSE,
                            standardise_audiences = "",
@@ -60,8 +58,24 @@ barb_get_spots <- function(min_transmission_date = NULL,
     # }
   }
 
-  spots %>%
-    dplyr::filter(is_macro_region==macro_regions)
+  spots_macro_true <- spots |>
+    dplyr::filter(is_macro_region==TRUE)
+
+  spots_macro_false <- spots |>
+    dplyr::filter(is_macro_region==FALSE)
+
+  # Remove all universes except Online Multiple Screens Network for spots that have multiple universes
+  spots_all <- spots_macro_false |>
+    dplyr::mutate(panel_region_online_multi = ifelse(panel_region=="Online Multiple Screen Network",1,0)) |>
+    dplyr::group_by(station_name, standard_datetime) |>
+    dplyr::mutate(duplicate = dplyr::n() > 1) |>
+    dplyr::ungroup() |>
+    dplyr::filter(!duplicate | panel_region=="Online Multiple Screen Network") |>
+    dplyr::select(-panel_region_online_multi, -duplicate) |>
+    dplyr::union_all(spots_macro_true)
+
+  spots_all
+
 }
 
 process_spot_json <- function(spot_json, metric = "audience_size_hundreds"){

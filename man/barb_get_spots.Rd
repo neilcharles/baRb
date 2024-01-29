@@ -8,7 +8,6 @@ barb_get_spots(
   min_transmission_date = NULL,
   max_transmission_date = NULL,
   advertiser_name = NULL,
-  macro_regions = FALSE,
   consolidated = TRUE,
   use_reporting_days = FALSE,
   standardise_audiences = "",
@@ -21,8 +20,6 @@ barb_get_spots(
 \item{max_transmission_date}{End date of the spot query}
 
 \item{advertiser_name}{Advertiser name. Get names from barb_get_advertisers()}
-
-\item{macro_regions}{whether to return macro or standard region areas}
 
 \item{consolidated}{whether to return consolidated or only live viewing. Defaults to TRUE (consolidated).}
 
