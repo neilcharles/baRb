@@ -50,8 +50,6 @@ barb_get_spots <- function(min_transmission_date = NULL,
 
       warning("BARB API responded with no data while paginating. Trying again.")
 
-      browser()
-
       # try again
       api_result <- barb_query_api(retry_url)
 
