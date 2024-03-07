@@ -42,17 +42,21 @@ barb_get_spots <- function(min_transmission_date = NULL,
   while(!is.null(api_result$next_url)){
     message("Paginating")
 
+    retry_url <- api_result$next_url
+
     api_result <- barb_query_api(api_result$next_url)
 
-    if(!is.null(api_result$json$events)){  #Needed in case a page contains no data. Queried with BARB why this happens.
+    if(is.null(api_result$json$events)){  #Needed in case a page contains no data. Queried with BARB why this happens.
 
       warning("BARB API responded with no data while paginating. Trying again.")
 
+      browser()
+
       # try again
-      api_result <- barb_query_api(api_result$next_url)
+      api_result <- barb_query_api(retry_url)
 
       # Fail if unsuccessful
-      if(!is.null(api_result$json$events)){  #Needed in case a page contains no data. Queried with BARB why this happens.
+      if(is.null(api_result$json$events)){  #Needed in case a page contains no data. Queried with BARB why this happens.
         stop(glue::glue("BARB API returned no data from {api_result$next_url}. Data request failed."))
       }
     }
